@@ -4,7 +4,28 @@ Supports flushing metrics to graphite
 import sys
 import socket
 import logging
+import time
 
+class GraphiteStoreStats(object):
+  def __init__(self):
+    self._timers = {}
+    self._stats = {}
+
+  def get_stats(self):
+    return self._stats
+
+  def clear_stats(self):
+    self._stats = {}
+
+  def start_timer(self, timer):
+    self._timers[timer] = time.time()
+    
+  def stop_timer(self, timer):
+    if timer in self._timers:
+      self._stats[timer] = time.time() - self._timers[timer] 
+
+  def add_stat(self, stat, value):
+    self._stats[stat] = value
 
 class GraphiteStore(object):
     def __init__(self, host="localhost", port=2003, prefix="statsite", attempts=3):
@@ -33,6 +54,7 @@ class GraphiteStore(object):
         self.attempts = attempts
         self.sock = self._create_socket()
         self.logger = logging.getLogger("statsite.graphitestore")
+        self.stats = GraphiteStoreStats()
 
     def flush(self, metrics):
         """
@@ -41,7 +63,9 @@ class GraphiteStore(object):
        :Parameters:
         - `metrics` : A list of (key,value,timestamp) tuples.
         """
+        self.stats.add_stat("num_stats", len(metrics),)
         # Construct the output
+        self.stats.start_timer("format_time")
         metrics = [m.split("|") for m in metrics if m]
         self.logger.info("Outputting %d metrics" % len(metrics))
         if not self.prefix:
@@ -49,12 +73,25 @@ class GraphiteStore(object):
         else:
             lines = ["%s.%s %s %s" % (self.prefix, k, v, ts) for k, v, ts in metrics]
         data = "\n".join(lines) + "\n"
+        self.stats.stop_timer("format_time")
 
         # Serialize writes to the socket
+        self.stats.start_timer("send_time")
         try:
             self._write_metric(data)
         except:
             self.logger.exception("Failed to write out the metrics!")
+        self.stats.stop_timer("send_time")
+
+        ts = int(time.time())
+        stats = self.stats.get_stats()
+        lines = ["%s %s %d" % ("stats.statsite."+stat, stats[stat], ts) for stat in stats]
+        data = "\n".join(lines) + "\n"
+        try:
+            self._write_metric(data)
+        except:
+            self.logger.exception("Failed to write out the stats about the metrics!")
+        self.stats.clear_stats()
 
     def close(self):
         """
@@ -90,7 +127,9 @@ if __name__ == "__main__":
     graphite = GraphiteStore(*sys.argv[1:])
 
     # Get all the inputs
+    graphite.stats.start_timer("read_time")
     metrics = sys.stdin.read()
+    graphite.stats.stop_timer("read_time")
 
     # Flush
     graphite.flush(metrics.split("\n"))
