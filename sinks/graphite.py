@@ -34,10 +34,6 @@ class GraphiteStore(object):
         self.sock = self._create_socket()
         self.logger = logging.getLogger("statsite.graphitestore")
 
-    def strip_prefix(self, key):
-        # statsite prefixes all keys with a type: counts or timers, for example. Strip it!
-        return key[key.find('.')+1:]
-
     def flush(self, metrics):
         """
         Flushes the metrics provided to Graphite.
@@ -49,10 +45,12 @@ class GraphiteStore(object):
         metrics = [m.split("|") for m in metrics if m]
         self.logger.info("Outputting %d metrics" % len(metrics))
         if not self.prefix:
-            lines = ["%s %s %s" % (self.strip_prefix(k), v, ts) for k, v, ts in metrics]
+            lines = ["%s %s %s" % (k, v, ts) for k, v, ts in metrics]
         else:
-            lines = ["%s.%s %s %s" % (self.prefix, self.strip_prefix(k), v, ts) for k, v, ts in metrics]
+            lines = ["%s.%s %s %s" % (self.prefix, k, v, ts) for k, v, ts in metrics]
         data = "\n".join(lines) + "\n"
+
+        print "All my data is %s" % (data,)
 
         # Serialize writes to the socket
         try:
@@ -70,6 +68,7 @@ class GraphiteStore(object):
     def _create_socket(self):
         """Creates a socket and connects to the graphite server"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print "Connecting to %s, %d" % (self.host, self.port)
         sock.connect((self.host, self.port))
         return sock
 
