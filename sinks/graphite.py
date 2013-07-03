@@ -50,8 +50,6 @@ class GraphiteStore(object):
             lines = ["%s.%s %s %s" % (self.prefix, k, v, ts) for k, v, ts in metrics]
         data = "\n".join(lines) + "\n"
 
-        print "All my data is %s" % (data,)
-
         # Serialize writes to the socket
         try:
             self._write_metric(data)
@@ -68,7 +66,6 @@ class GraphiteStore(object):
     def _create_socket(self):
         """Creates a socket and connects to the graphite server"""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print "Connecting to %s, %d" % (self.host, self.port)
         sock.connect((self.host, self.port))
         return sock
 
