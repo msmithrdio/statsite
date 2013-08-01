@@ -1,3 +1,15 @@
+statsite (0.0.3) unstable; urgency=low
+
+  * Fix counters to be per second.
+
+ -- Michael Smith <msmith@srv-107-11.720.rdio>  Thu, 01 Aug 2013 16:33:10 -0700
+
+statsite (0.0.2) unstable; urgency=low
+
+  * Fix counters and set counts to be statsd compatible.
+
+ -- Michael Smith <msmith@srv-107-11.720.rdio>  Thu, 01 Aug 2013 16:01:10 -0700
+
 statsite (0.0.1) unstable; urgency=low
 
   * Initial Release.
