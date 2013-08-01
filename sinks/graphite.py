@@ -28,7 +28,7 @@ class GraphiteStoreStats(object):
     self._stats[stat] = value
 
 class GraphiteStore(object):
-    def __init__(self, host="localhost", port=2003, prefix="statsite", attempts=3):
+    def __init__(self, host="localhost", port=2003, prefix="statsite", attempts=3, flush_interval=10000):
         """
         Implements an interface that allows metrics to be persisted to Graphite.
         Raises a :class:`ValueError` on bad arguments.
@@ -42,6 +42,7 @@ class GraphiteStore(object):
         # Convert the port to an int since its coming from a configuration file
         port = int(port)
         attempts = int(attempts)
+        flush_interval = int(flush_interval)
 
         if port <= 0:
             raise ValueError("Port must be positive!")
@@ -52,9 +53,17 @@ class GraphiteStore(object):
         self.port = port
         self.prefix = prefix
         self.attempts = attempts
+        self.flush_interval = flush_interval
         self.sock = self._create_socket()
         self.logger = logging.getLogger("statsite.graphitestore")
         self.stats = GraphiteStoreStats()
+
+    def _process_datapoint(self, k, v):
+        """Post-process datapoints"""
+        # Convert raw counters into per-second counters; it's more useful!
+        if k.endswith(".count"):
+          return float(v) / (self.flush_interval / 1000)
+        return v
 
     def flush(self, metrics):
         """
@@ -69,9 +78,9 @@ class GraphiteStore(object):
         metrics = [m.split("|") for m in metrics if m]
         self.logger.info("Outputting %d metrics" % len(metrics))
         if not self.prefix:
-            lines = ["%s %s %s" % (k, v, ts) for k, v, ts in metrics]
+            lines = ["%s %s %s" % (k, self._process_datapoint(k,v), ts) for k, v, ts in metrics]
         else:
-            lines = ["%s.%s %s %s" % (self.prefix, k, v, ts) for k, v, ts in metrics]
+            lines = ["%s.%s %s %s" % (self.prefix, k, self._process_datapoint(k,v), ts) for k, v, ts in metrics]
         data = "\n".join(lines) + "\n"
         self.stats.stop_timer("format_time")
 
