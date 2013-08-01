@@ -92,11 +92,11 @@ static int stream_formatter(FILE *pipe, void *data, metric_type type, char *name
             break;
 
         case COUNTER:
-            STREAM("stats.counters.%s|%f|%lld\n", name, counter_sum(value));
+            STREAM("stats.counters.%s.count|%f|%lld\n", name, counter_sum(value));
             break;
 
         case SET:
-            STREAM("stats.sets.%s|%lld|%lld\n", name, set_size(value));
+            STREAM("stats.sets.%s.count|%lld|%lld\n", name, set_size(value));
             break;
 
         case TIMER:
